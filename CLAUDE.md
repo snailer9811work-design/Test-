@@ -126,7 +126,7 @@ no lo tienes y qué falta.
 |---|---|
 | `tools/panel.py` | leer la app; escribir solo con `--escribir` y orden de Snailer |
 | `tools/tiktok_pdp.py` | leer una ficha pública de TikTok Shop por ID (`--navegador` para galería y captura) |
-| `tools/pack_foto.py` | fotos de packs: `componer` N unidades reales o `sello` (con decisión de Snailer) |
+| `tools/pack_foto.py` | fotos de packs: `cuadrar` la foto del proveedor con el pack, `componer` N unidades reales o `sello` (con decisión de Snailer) |
 | MCP Skailer_Orquestador | tareas al PC: `gbrain`, `tiktok` (API de Helen'shop), `antigravity` (fotos), `grok` (vídeo), `accio`, `tts` |
 | MCP Google Drive | leer SecondBrain y crear archivos nuevos (no edita el contenido de uno existente) |
 

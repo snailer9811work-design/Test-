@@ -47,6 +47,57 @@ def contar_manchas_oscuras(img: Image.Image) -> int:
     return manchas
 
 
+def foto_pack_proveedor(ruta: Path, fondo=(255, 255, 255), ruido: bool = False) -> None:
+    """Foto vertical 1183x1500 del proveedor con 4 unidades, como la de Amazon."""
+    img = Image.new("RGB", (1183, 1500), fondo)
+    d = ImageDraw.Draw(img)
+    if ruido:  # escena (suelo, pared): el borde no es liso
+        for y in range(0, 1500, 30):
+            d.line((0, y, 1183, y), fill=(90 + y % 120, 60, 40), width=14)
+    for k in range(4):
+        d.rounded_rectangle((200 + k * 60, 150 + k * 300, 700 + k * 60, 400 + k * 300), radius=30, fill=(25, 25, 25))
+    img.save(ruta)
+
+
+class CuadrarTest(unittest.TestCase):
+    def test_pack_del_proveedor_queda_cuadrado_sin_tocar_el_producto(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            entrada = Path(tmp) / "pack4.png"
+            foto_pack_proveedor(entrada)
+            datos = pack_foto.procesar("cuadrar", str(entrada), 4, str(Path(tmp) / "principal4.jpg"))
+            self.assertEqual(datos["tamano"], [1600, 1600])
+            self.assertEqual(datos["tamano_original"], [1183, 1500])
+            self.assertEqual(datos["escala"], 1.067)
+            self.assertEqual(datos["color_relleno"], [255, 255, 255])
+            self.assertFalse(datos["revisar_a_ojo"])
+            with Image.open(datos["salida"]) as im:
+                self.assertEqual(im.size, (1600, 1600))
+                self.assertEqual(contar_manchas_oscuras(im), 4)
+                self.assertGreater(min(im.convert("L").getpixel((5, 800)), im.convert("L").getpixel((1594, 800))), 245)
+
+    def test_png_transparente_sale_con_fondo_blanco(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            entrada = Path(tmp) / "pack4.png"
+            img = Image.new("RGBA", (900, 1200), (0, 0, 0, 0))
+            d = ImageDraw.Draw(img)
+            for k in range(4):
+                d.rounded_rectangle((150, 80 + k * 280, 700, 300 + k * 280), radius=30, fill=(25, 25, 25, 255))
+            img.save(entrada)
+            datos = pack_foto.procesar("cuadrar", str(entrada), 4, str(Path(tmp) / "principal4.jpg"))
+            self.assertEqual(datos["color_relleno"], [255, 255, 255])
+            self.assertFalse(datos["revisar_a_ojo"])
+            with Image.open(datos["salida"]) as im:
+                self.assertEqual(contar_manchas_oscuras(im), 4)
+                self.assertGreater(im.convert("L").getpixel((5, 5)), 245)
+
+    def test_fondo_de_escena_pide_revision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            entrada = Path(tmp) / "escena.png"
+            foto_pack_proveedor(entrada, ruido=True)
+            datos = pack_foto.procesar("cuadrar", str(entrada), 4, str(Path(tmp) / "escena4.jpg"))
+            self.assertTrue(datos["revisar_a_ojo"])
+
+
 class ComponerTest(unittest.TestCase):
     def test_tres_unidades_reales_en_1600(self):
         with tempfile.TemporaryDirectory() as tmp:

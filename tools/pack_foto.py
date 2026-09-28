@@ -5,8 +5,11 @@ Regla de Snailer (28-sep-2026): si el producto se vende en pack, la foto
 principal y la foto de CADA variante muestran la cantidad de ese pack.
 La cantidad sale de la ficha del proveedor, nunca de la foto.
 
-Dos órdenes:
+Tres órdenes:
 
+  cuadrar   -> la foto del PROVEEDOR que ya enseña las N unidades, cuadrada y a
+               1600x1600 con su mismo fondo. Es la vía preferida (paso 3.1 del
+               método): no toca el producto. Las unidades se cuentan a ojo.
   componer  -> N copias REALES de la foto de una unidad, juntas, sobre fondo
                blanco, 1600x1600. Para cuando el proveedor no trae una foto con
                las N unidades. No inventa producto: repite la foto real.
@@ -14,11 +17,12 @@ Dos órdenes:
                política de TikTok Shop US prohíbe texto o gráficos añadidos en
                las fotos de producto; úsalo solo con la decisión de Snailer.
 
+  python tools/pack_foto.py cuadrar --entrada pack4_proveedor.jpg --cantidad 4 --salida principal4.jpg
   python tools/pack_foto.py componer --entrada unidad.jpg --cantidad 3 --salida pack3.jpg
   python tools/pack_foto.py sello --entrada pack3.jpg --cantidad 3 --salida pack3_sello.jpg
   python tools/pack_foto.py lote --plan plan.json
 
-plan.json = [{"orden": "componer"|"sello", "entrada": "...", "cantidad": 3,
+plan.json = [{"orden": "cuadrar"|"componer"|"sello", "entrada": "...", "cantidad": 3,
               "salida": "...", "unidad": "PACK"}, ...]
 Cada salida deja al lado un .json con el sha256 de entrada y salida (evidencia).
 Código de salida 2 = hay fotos para REVISAR A OJO.
@@ -47,6 +51,7 @@ UNIDADES = {"PACK", "PAIRS", "PCS", "SET"}
 ESQUINAS = ("tl", "tr", "bl", "br")
 UMBRAL_OCUPADA = 18.0  # detalle medio a partir del cual la esquina tapa producto
 MAX_UNIDADES_COMPONER = 12  # más de 12 ya no se distinguen: usar foto del proveedor
+MAX_AMPLIACION = 1.6  # ampliar más que esto emborrona: pedir una foto mayor al proveedor
 
 
 def sha256(data: bytes) -> str:
@@ -77,6 +82,59 @@ def validar(cantidad: int, unidad: str = "PACK") -> str:
     return unidad
 
 
+# ---------------------------------------------------------------- fondo
+def a_rgb(img: Image.Image) -> Image.Image:
+    """RGB sobre blanco: un PNG con fondo transparente no debe salir con fondo negro."""
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        base = Image.new("RGB", rgba.size, (255, 255, 255))
+        base.paste(rgba, mask=rgba.getchannel("A"))
+        return base
+    return img.convert("RGB")
+
+
+def fondo_de_borde(rgb: Image.Image, tolerancia: int = 28) -> tuple[tuple[int, int, int], float]:
+    """Color del fondo (mediana del borde) y fracción del borde que es ese fondo.
+
+    Si la fracción es baja, la foto no tiene fondo liso: recortar o rellenar se nota.
+    """
+    ancho, alto = rgb.size
+    borde = [rgb.getpixel((x, y)) for x in range(0, ancho, max(1, ancho // 50)) for y in (0, alto - 1)]
+    borde += [rgb.getpixel((x, y)) for y in range(0, alto, max(1, alto // 50)) for x in (0, ancho - 1)]
+    fondo = tuple(sorted(c[i] for c in borde)[len(borde) // 2] for i in range(3))
+    claros = sum(1 for c in borde if max(abs(c[i] - fondo[i]) for i in range(3)) <= tolerancia)
+    return fondo, claros / len(borde)
+
+
+# ---------------------------------------------------------------- cuadrar
+def cuadrar(img: Image.Image, cantidad: int) -> tuple[Image.Image, dict]:
+    """Foto del proveedor con el pack completo -> cuadrada, 1600x1600, mismo fondo.
+
+    Solo añade fondo a los lados y cambia el tamaño: el producto no se toca.
+    """
+    rgb = a_rgb(img)
+    fondo, fraccion_fondo = fondo_de_borde(rgb)
+    lado = max(rgb.size)
+    lienzo = Image.new("RGB", (lado, lado), fondo)
+    lienzo.paste(rgb, ((lado - rgb.width) // 2, (lado - rgb.height) // 2))
+    escala = LADO_SALIDA / lado
+    if lado != LADO_SALIDA:
+        lienzo = lienzo.resize((LADO_SALIDA, LADO_SALIDA), Image.LANCZOS)
+    datos = {
+        "orden": "cuadrar",
+        "unidades_en_foto": f"{cantidad} según la ficha del proveedor: contarlas a ojo",
+        "tamano_original": list(rgb.size),
+        "escala": round(escala, 3),
+        "color_relleno": list(fondo),
+        "fondo_liso_en_borde": round(fraccion_fondo, 2),
+        "tamano": [LADO_SALIDA, LADO_SALIDA],
+        "lado_minimo_ok": True,
+        # Relleno sobre fondo no liso se nota; ampliar demasiado emborrona.
+        "revisar_a_ojo": fraccion_fondo < 0.8 or escala > MAX_AMPLIACION,
+    }
+    return lienzo, datos
+
+
 # ---------------------------------------------------------------- componer
 def recortar_unidad(img: Image.Image, tolerancia: int = 28) -> tuple[Image.Image, float]:
     """Recorta la unidad separándola del fondo claro del borde.
@@ -84,13 +142,9 @@ def recortar_unidad(img: Image.Image, tolerancia: int = 28) -> tuple[Image.Image
     Devuelve la unidad en RGBA y la fracción de borde que era fondo claro
     (si es baja, la foto no tiene fondo liso y el recorte hay que mirarlo).
     """
-    rgb = img.convert("RGB")
+    rgb = a_rgb(img)
     ancho, alto = rgb.size
-    borde = [rgb.getpixel((x, y)) for x in range(0, ancho, max(1, ancho // 50)) for y in (0, alto - 1)]
-    borde += [rgb.getpixel((x, y)) for y in range(0, alto, max(1, alto // 50)) for x in (0, ancho - 1)]
-    fondo = tuple(sorted(c[i] for c in borde)[len(borde) // 2] for i in range(3))
-    claros = sum(1 for c in borde if max(abs(c[i] - fondo[i]) for i in range(3)) <= tolerancia)
-    fraccion_fondo = claros / len(borde)
+    fondo, fraccion_fondo = fondo_de_borde(rgb, tolerancia)
     diferencia = ImageChops.difference(rgb, Image.new("RGB", rgb.size, fondo)).convert("L")
     mascara = diferencia.point(lambda v: 255 if v > tolerancia else 0).filter(ImageFilter.MaxFilter(5))
     mascara = mascara.filter(ImageFilter.GaussianBlur(1.2))
@@ -139,7 +193,7 @@ def componer(img: Image.Image, cantidad: int) -> tuple[Image.Image, dict]:
         "tamano": [LADO_SALIDA, LADO_SALIDA],
         "lado_minimo_ok": True,
         # Si la foto original no tenía fondo liso, el recorte puede llevarse fondo:
-        "revisar_a_ojo": fraccion_fondo < 0.8 or escala > 1.6,
+        "revisar_a_ojo": fraccion_fondo < 0.8 or escala > MAX_AMPLIACION,
     }
     return lienzo, datos
 
@@ -215,7 +269,9 @@ def procesar(orden: str, entrada: str, cantidad: int, salida: str, unidad: str =
     crudo = leer_bytes(entrada)
     with Image.open(io.BytesIO(crudo)) as img:
         img.load()
-        if orden == "componer":
+        if orden == "cuadrar":
+            resultado, datos = cuadrar(img, cantidad)
+        elif orden == "componer":
             resultado, datos = componer(img, cantidad)
         elif orden == "sello":
             resultado, datos = poner_sello(img, cantidad, unidad, esquina, color)
@@ -240,7 +296,7 @@ def procesar(orden: str, entrada: str, cantidad: int, salida: str, unidad: str =
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("orden", choices=["componer", "sello", "lote"])
+    ap.add_argument("orden", choices=["cuadrar", "componer", "sello", "lote"])
     ap.add_argument("--entrada", help="ruta o URL de la foto")
     ap.add_argument("--cantidad", type=int, help="unidades de ESA variante según la ficha del proveedor")
     ap.add_argument("--salida", help="ruta del JPG resultante")
