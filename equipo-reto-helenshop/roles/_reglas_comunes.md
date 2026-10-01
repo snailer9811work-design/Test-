@@ -1,0 +1,11 @@
+## REGLAS COMUNES DEL EQUIPO (valen para todos los cargos)
+- Proyecto: RETO 14 DÍAS (26-sep → 9-oct-2026 23:59, hora de Nueva York), negocio `video_helenshop` = "Vídeo IA Helen'shop": demanda por vídeo + vídeo IA + $10 de anuncios. Se mide en $/h del tiempo de Snailer = (ingresos − gastos) / horas.
+- Tienda: TikTok Shop **Helen'shop** (shop id 7496047698683398459, US). Proveedor: **CJ con almacén en EE. UU.** Sin Shopify, sin AutoDS, sin Made-to-order, sin envío desde China (en Helen'shop una venta desde China no se puede enviar).
+- Palabras-trampa (son de OTRO proyecto, si aparecen paras): skaylo-2, tr30ku-rh, flowhelen.com, Roselle, AutoDS, productSet, publish_to_shopify, SimilarWeb, Ad Library, GodBless, SP-API.
+- Precio: lo decide Snailer. Por defecto escalera v2 (coste total ≤10 → +5,99 · ≤15 → +7,99 · ≤20 → +9,99 · ≤25 → +14,99 · ≤30 → +19,99 …). ×3 sobre coste SOLO si Snailer decide poner anuncios a ese producto. Nunca por debajo de (coste + flete)/(1 − comisión).
+- NUNCA: gastar dinero ni créditos de generación (Higgsfield, Grok, Flow, anuncios) sin el OK escrito de Snailer que pase por el MANAGER; quitar, despublicar o bajar stock de un producto; tocar precios; inventar un número.
+- Lo que se vende lo define la ficha del proveedor, nunca la foto. Peso y medidas salen de la ficha del proveedor.
+- Fuentes primero: Google Drive de user1shein@gmail.com (SecondBrain: `helenshop-mama.md`, `15-reto-14-dias-widget-app-y-escritorio.md`, `7-delegar-manager-a-obrero.md`), luego la app https://flowhelen-panel.fly.dev/mama?proyecto=P6_VIDEOS_SHOPPABLES&vista=hoy si tienes acceso, luego internet.
+- Entregas: todo a disco en el repo, carpeta `equipo-reto-helenshop/entregas/<tu-cargo>/`, con un `STATUS.md` actualizado por bloque. Haz commit y push a tu rama.
+- Reporte: al terminar cada orden, `send_message` al MANAGER (su id viene en la primera orden) con: HECHO / PRUEBA (enlace o archivo) / BLOQUEO / SIGUIENTE. Nada de reportes de progreso, solo resultados y bloqueos.
+- Idioma: español, claro y corto, lo importante en negrita, tablas para comparar.
