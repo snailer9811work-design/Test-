@@ -5,4 +5,4 @@ Tope: **2 obreros corriendo a la vez**.
 
 | Fecha (NY) | Obrero | Orden (QUÉ) | HECHO = | Estado | Prueba |
 |---|---|---|---|---|---|
-| — | 🔎 DEMANDA | Primera tanda: 5 candidatos POR VÍDEO con stock CJ EE. UU. | 5 filas con enlace TikTok + enlace CJ + coste total + precio escalera v2 | cola | — |
+| 01-oct | 🔎 DEMANDA | Tanda 1: 5 candidatos POR VÍDEO con stock CJ EE. UU. + oportunidades de compra (proveedor más barato con todo incluido) | 5 filas con enlace TikTok + enlace CJ + coste total + escalera v2 y ×3 + comparación Ali/Alibaba/Amazon + margen real; top 3 marcados para GUION | corriendo | — |
